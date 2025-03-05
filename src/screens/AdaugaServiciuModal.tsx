@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from 'react';
-import { Modal, Portal, useTheme } from 'react-native-paper';
+import { MD3DarkTheme, MD3LightTheme, Modal, Portal, useTheme } from 'react-native-paper';
 import { ServiceUtilaj, useServiceUtilaj } from '../services/ServiceUtilaj';
 
 import { StyleSheet, Alert, View, TouchableOpacity, ScrollView, SafeAreaView, useColorScheme } from 'react-native';
@@ -19,44 +19,42 @@ interface AdaugaServiciuModalProps {
     rowData: Service | null;
 }
 
-function useIsDarkMode() {
-    return useColorScheme() === 'dark';
-}
+const initialFormData = {
+    inventar: '',
+    data: new Date(),
+    index: '',
+    lucrare_detalii: '',
+    service_utilaj: '',
+    file: null as string | null,
+    revizie: {
+      ulei_motor: false,
+      filtru_ulei_motor: false,
+      filtru_combustibil: false,
+      filtru_aer: false,
+      filtru_polen: false,
+      filtru_adblue: false,
+      filtru_uscator: false,
+    },
+    revizie1: {
+      filtru_cutie: false,
+      filtru_ulei_cutie: false,
+      ulei_punte: false,
+    },
+    revizie2: {
+      ulei_hidraulic: false,
+      filtru_ulei_hidraulic: false,
+    },
+  };
 
 const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDismiss, rowData }) => {
 
     console.log("Row data: ", rowData);
 
-    const theme = useTheme();
+    const theme = useTheme(); // ✅ Folosim tema din PaperProvider
 
     const utilajId = rowData?.id;
 
-    const [formData, setFormData] = useState({
-        inventar: '',
-        data: new Date(),
-        index: '',
-        lucrare_detalii: '',
-        service_utilaj: '',
-        file: null as string | null,
-        revizie: {
-            ulei_motor: false,
-            filtru_ulei_motor: false,
-            filtru_combustibil: false,
-            filtru_aer: false,
-            filtru_polen: false,
-            filtru_adblue: false,
-            filtru_uscator: false,
-        },
-        revizie1: {
-            filtru_cutie: false,
-            filtru_ulei_cutie: false,
-            ulei_punte: false,
-        },
-        revizie2: {
-            ulei_hidraulic: false,
-            filtru_ulei_hidraulic: false,
-        },
-    });
+    const [formData, setFormData] = useState(initialFormData);
 
     const [datePickerVisible, setDatePickerVisible] = useState(false);
     const [services, setServices] = useState<ServiceUtilaj[]>([]);
@@ -77,25 +75,28 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
         }
     }, []);
 
-    // useEffect(() => {
-    //     handleChange('service', selectedService);
-    // }, [selectedService]);
+    useEffect(() => {
+        if (visible) {
+          setFormData(initialFormData); // ✅ Resetează formularul când modalul devine vizibil
+        }
+      }, [visible]); // 🔥 Se execută doar când `visible` se schimbă
+
 
     // ✅ Funcție generală pentru actualizarea valorilor în formular
     const handleChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-   // ✅ Funcție pentru actualizarea checkbox-urilor în secțiuni
-   const handleCheckboxChange = (section: keyof typeof formData, field: string) => {
-    setFormData((prev) => ({
-        ...prev,
-        [section]: {
-            ...(prev[section] as object),
-            [field]: !(prev[section] as any)[field],
-        },
-    }));
-};
+    // ✅ Funcție pentru actualizarea checkbox-urilor în secțiuni
+    const handleCheckboxChange = (section: keyof typeof formData, field: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            [section]: {
+                ...(prev[section] as object),
+                [field]: !(prev[section] as any)[field],
+            },
+        }));
+    };
 
     // ✅ Funcție pentru primirea PDF-ului de la `DocumentScannerScreen`
     const handlePdfGenerated = (pdfPath: any) => {
@@ -115,7 +116,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
             return;
         }
 
-       const payload = new FormData();
+        const payload = new FormData();
         Object.entries(formData).forEach(([key, value]) => {
             if (key === 'file' && value) {
                 payload.append('file', {
@@ -149,10 +150,10 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
                 <SafeAreaView style={styles.container}>
                     <ScrollView contentContainerStyle={styles.scrollContainer}>
-                        <Button onPress={onDismiss} style={styles.closeButton}>X</Button>
+                        <Button onPress={onDismiss} textColor={theme.colors.onSurface} style={styles.closeButton}>X</Button>
                         <Divider />
 
-                        <Text style={[styles.modalSubtitle, { color: theme.colors.onBackground }]}>Utilaj: {utilajId}</Text>
+                        <Text style={[styles.modalSubtitle, { color: theme.colors.onSurface }]}>Utilaj: {utilajId}</Text>
 
                         {/* Câmp Index */}
                         <TextInput
@@ -160,7 +161,9 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                             mode="outlined"
                             value={formData.index}
                             onChangeText={(text) => handleChange('index', text)}
-                            style={[styles.input, { backgroundColor: theme.colors.surface }]}
+                            placeholderTextColor={theme.colors.onSurface}
+                            style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
+                            theme={{ colors: { text: theme.colors.onSurface } }}
                         />
 
                         {/* 🔥 Date Picker - modificat pentru a fi clicabil */}
@@ -169,9 +172,11 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                                 label="Data*"
                                 mode="outlined"
                                 value={formData.data ? formData.data.toLocaleDateString() : ''}
-                                style={[styles.input, { backgroundColor: theme.colors.surface }]}
+                                style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
                                 editable={false} // 🔹 Evităm input manual
                                 pointerEvents="none" // 🔹 Previne interacțiunea accidentală
+                                placeholderTextColor={theme.colors.onSurface}
+                                theme={{ colors: { text: theme.colors.onSurface } }}
                             />
                         </TouchableOpacity>
 
@@ -192,38 +197,41 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
                         {/* 🔥 Lista de revizii */}
                         <List.Section title="Date Vehicul">
-                            <List.Accordion title="Revizie">
+                            <List.Accordion title="Revizie" titleStyle={{ color: theme.colors.onSurface }}>
                                 {Object.keys(formData.revizie).map((key) => (
                                     <View style={styles.checkboxContainer} key={key}>
                                         <Checkbox
                                             status={formData.revizie[key as keyof typeof formData.revizie] ? 'checked' : 'unchecked'}
                                             onPress={() => handleCheckboxChange('revizie', key)}
+                                            color={theme.colors.primary}
                                         />
-                                        <Text style={{ color: theme.colors.onBackground }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
+                                        <Text style={{ color: theme.colors.onSurface }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
                                     </View>
                                 ))}
                             </List.Accordion>
 
-                            <List.Accordion title="Revizie 1 +">
+                            <List.Accordion title="Revizie 1 +" titleStyle={{ color: theme.colors.onSurface }}>
                                 {Object.keys(formData.revizie1).map((key) => (
                                     <View style={styles.checkboxContainer} key={key}>
                                         <Checkbox
                                             status={formData.revizie1[key as keyof typeof formData.revizie1] ? 'checked' : 'unchecked'}
                                             onPress={() => handleCheckboxChange('revizie1', key)}
+                                            color={theme.colors.primary}
                                         />
-                                        <Text style={{ color: theme.colors.onBackground }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
+                                        <Text style={{ color: theme.colors.onSurface }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
                                     </View>
                                 ))}
                             </List.Accordion>
 
-                            <List.Accordion title="Revizie 2 +">
+                            <List.Accordion title="Revizie 2 +" titleStyle={{ color: theme.colors.onSurface }}>
                                 {Object.keys(formData.revizie2).map((key) => (
                                     <View style={styles.checkboxContainer} key={key}>
                                         <Checkbox
                                             status={formData.revizie2[key as keyof typeof formData.revizie2] ? 'checked' : 'unchecked'}
                                             onPress={() => handleCheckboxChange('revizie2', key)}
+                                            color={theme.colors.primary}
                                         />
-                                        <Text style={{ color: theme.colors.onBackground }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
+                                        <Text style={{ color: theme.colors.onSurface }}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
                                     </View>
                                 ))}
                             </List.Accordion>
@@ -232,7 +240,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <Divider />
 
                         <View style={styles.pickerContainer}>
-                            <Text style={styles.labelText}>Service</Text>
+                            <Text style={[styles.labelText, {color: theme.colors.onSurface }]}>Service</Text>
 
                             {services.length > 0 ? (
                                 <Picker
@@ -243,7 +251,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                                     ))}
                                 </Picker>
                             ) : (
-                                <Text>Nu exista servicii disponibile</Text>
+                                <Text style={{ color: theme.colors.onSurface }}>Nu exista servicii disponibile</Text>
                             )}
                         </View>
 
@@ -251,7 +259,9 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <TextInput
                             label="Detalii lucrări efectuate"
                             mode="outlined"
-                            value={formData.lucrare_detalii} onChangeText={(text) => handleChange('lucrare_detalii', text)} multiline numberOfLines={4} style={[styles.textArea, { backgroundColor: theme.colors.surface }]}
+                            value={formData.lucrare_detalii} onChangeText={(text) => handleChange('lucrare_detalii', text)} multiline numberOfLines={4}
+                            style={[styles.textArea, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
+                            theme={{ colors: { text: theme.colors.onSurface } }}
                         />
 
                         <Divider />
@@ -272,7 +282,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
 const styles = StyleSheet.create({
     modalContainer: {
-        backgroundColor: 'white',
+        //  backgroundColor: 'white',
         //alignItems: 'center' as 'center',
         width: '100%',
     },
@@ -290,7 +300,7 @@ const styles = StyleSheet.create({
     },
     container: {
         // flex: 1,
-        backgroundColor: '#f8f8f8',
+       // backgroundColor: '#f8f8f8',
         padding: 10,
     },
     scrollContainer: {
@@ -315,8 +325,8 @@ const styles = StyleSheet.create({
         margin: 10,
         height: 100,
         textAlignVertical: 'top',
-        backgroundColor: '#fff',
-        color: '#000000',
+       // backgroundColor: '#fff',
+       // color: '#000000',
     },
     checkboxContainer: {
         flexDirection: 'row',
@@ -326,8 +336,8 @@ const styles = StyleSheet.create({
     buttonTrimite: {
         marginTop: 10,
         marginBottom: 10,
-        backgroundColor: '#007bff',
-        color: '#fff',
+       // backgroundColor: '#007bff',
+       // color: '#fff',
     },
     pickerContainer: {
         margin: 10,

@@ -4,12 +4,15 @@ import { Divider, PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-nativ
 
 import AdaugaServiciuModal from './AdaugaServiciuModal';
 import ServiceTable, { Service } from '../components/ServiceTable';
+import { useAuth } from '../context/AuthContext';
 
 
 
 const HomeScreen = () => {
   const [visible, setVisible] = useState(false);
   const [selectedRowData, setSelectedRowData] = useState<Service | null>(null);
+
+  const { user } = useAuth();
 
   const showModal = (rowData: Service) => {
     setSelectedRowData(rowData);
@@ -24,7 +27,7 @@ const HomeScreen = () => {
   return (
     <PaperProvider theme={theme}>
       <ScrollView style={[styles.containerView, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.text, { color: theme.colors.onBackground }]}>Bine ai venit, Antonio!👋</Text>
+        <Text style={[styles.text, { color: theme.colors.onBackground }]}>Bine ai venit, {user ? user.first_name : ''}!👋</Text>
         <Divider style={{ backgroundColor: theme.colors.primary }} />
         <Text style={[styles.textFlota, { color: theme.colors.onBackground }]}>Flota Utilaje</Text>
         <ServiceTable onRowPress={showModal} />

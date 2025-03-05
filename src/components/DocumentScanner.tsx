@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Alert, StyleSheet, ScrollView, Image, PermissionsAndroid, Platform, Text } from 'react-native';
-import { Button, IconButton } from 'react-native-paper';
+import { Button, Icon, IconButton, useTheme } from 'react-native-paper';
 import DocumentScanner from 'react-native-document-scanner-plugin';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import FileViewer from 'react-native-file-viewer';
@@ -13,6 +13,8 @@ interface DocumentScannerScreenProps {
 const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGenerated }) => {
   const [scannedImages, setScannedImages] = useState<string[]>([]);
   const [pdfPath, setPdfPath] = useState<string | null>(null);
+
+  const theme = useTheme(); // ✅ Folosește tema PaperProvider
 
   // 🔹 Cerere permisiuni la montare
   useEffect(() => {
@@ -148,18 +150,29 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.buttonRow}>
-        <Button mode="contained" onPress={handleScanDocument} style={styles.buttonScan}>
+        <Button mode="contained" onPress={handleScanDocument} style={[styles.buttonScan, { backgroundColor: theme.colors.primary }]}>
           Scanare Document
         </Button>
-        <Button mode="contained" onPress={generatePDF} style={styles.buttonGen} disabled={scannedImages.length === 0}>
-          <IconButton
-            icon="file-pdf-box" // Pictogramă pentru PDF
-            size={30}
-          />
-          <Text style={{ fontSize: 12, color: 'gray' }}>Generează PDF</Text>
+        <Button
+          mode="contained"
+          onPress={generatePDF}
+          style={[styles.buttonGen, { backgroundColor: theme.colors.secondary }]}
+          disabled={scannedImages.length === 0}
+        >
+          <View style={styles.buttonContent}>
+            <Icon
+              source="file-pdf-box"
+              size={20}
+              color={theme.colors.onSecondary}
+            />
+            <Text style={[{ color: theme.colors.onSecondary }]}>
+              Generează PDF
+            </Text>
+          </View>
         </Button>
+
 
       </View>
 
@@ -181,7 +194,7 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
 
       {/* 🔹 Buton pentru deschiderea PDF-ului */}
       {pdfPath && (
-        <Button mode="contained" onPress={openPDF} style={styles.openPdfButton}>
+        <Button mode="contained" onPress={openPDF} style={[styles.openPdfButton, { backgroundColor: theme.colors.primary }]}>
           Deschide PDF
         </Button>
       )}
@@ -194,8 +207,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    // backgroundColor: '#f8f8f8',
     // padding: 10,
+  },
+  buttonContent: {
+    flexDirection: 'row', // ✅ Aliniere orizontală a conținutului
+    alignItems: 'center',
   },
   buttonRow: {
     flexDirection: 'column',
@@ -206,8 +223,8 @@ const styles = StyleSheet.create({
   buttonScan: {
     // marginTop: 10,
     margin: 10,
-    backgroundColor: '#ccc',
-    color: '#fff',
+    // backgroundColor: '#ccc',
+    //   color: '#fff',
     flex: 1,
     marginHorizontal: 5,
   },
@@ -215,7 +232,7 @@ const styles = StyleSheet.create({
     // marginTop: 10,
     margin: 10,
     // green background
-    color: '#fff',
+    // color: '#fff',
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'center',

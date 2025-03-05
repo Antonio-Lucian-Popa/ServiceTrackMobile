@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 
-const API_URL = 'https://uti.umbgrup.ro';
+const API_URL = 'https://test.uti.umbgrup.ro';
 
 interface AuthResponse {
   access: string;
@@ -9,7 +9,7 @@ interface AuthResponse {
 }
 
 const apiService = {
- 
+
   login: async (username: string, password: string): Promise<AuthResponse | null> => {
     try {
       const response = await fetch(`${API_URL}/rest_api/token/`, {
@@ -83,7 +83,19 @@ const apiService = {
     }
   },
 
-  request: async (endpoint: string, method = 'GET', body?: any): Promise<any> => {
+  getUserIdFRomToken: (token: string): string | null => {
+    try {
+      const decoded: any = jwtDecode(token);
+      console.log('Decoded token:', decoded);
+      return decoded.user_id;
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  },
+
+  request: async (endpoint: string, method = 'GET', body?: any, isUserId: boolean = false): Promise<any> => {
+
     try {
       let token = await apiService.getAccessToken();
 
@@ -91,6 +103,13 @@ const apiService = {
         token = await apiService.refreshAccessToken();
         if (!token) throw new Error('Unauthorized');
       }
+
+      if (isUserId) {
+        let userId = apiService.getUserIdFRomToken(token);
+        endpoint = endpoint + userId;
+      }
+
+      console.log("Requesting:", `${API_URL}/${endpoint}`);
 
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method,

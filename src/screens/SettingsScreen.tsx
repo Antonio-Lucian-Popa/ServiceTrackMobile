@@ -1,23 +1,21 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import React from 'react';
 import { View, Alert, StyleSheet, useColorScheme } from 'react-native';
 import { List, Avatar, Divider, Button, MD3DarkTheme, MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { version as appVersion } from '../../package.json'; // Import versiunea din package.json
-
-
-// Simulăm datele utilizatorului
-const user = {
-  username: 'antoniolucian',
-  marca: '12345',
-};
-
-//const appVersion = '1.0.0'; // Versiunea aplicației
+import { useFocusEffect } from '@react-navigation/native';
 
 const SettingsScreen: React.FC = () => {
+  
+  const { user, logout, fetchUserInfo } = useAuth();
 
-  const { setUserToken } = useAuth();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
 
   const handleLogout = async () => {
     Alert.alert(
@@ -29,9 +27,10 @@ const SettingsScreen: React.FC = () => {
           text: 'Logout', onPress: async () => {
             console.log('User logged out');
             // 🔴 Deconectare utilizator
-            await AsyncStorage.removeItem('accessToken');
-            await AsyncStorage.removeItem('refreshToken');
-            setUserToken(null);
+            // await AsyncStorage.removeItem('accessToken');
+            // await AsyncStorage.removeItem('refreshToken');
+            // setUserToken(null);
+            logout();
           },
         },
       ]
@@ -41,15 +40,16 @@ const SettingsScreen: React.FC = () => {
   const scheme = useColorScheme(); // 🔥 Detectează tema sistemului
   const theme = scheme === 'dark' ? MD3DarkTheme : MD3LightTheme; // 🔥 Aplică tema
 
+
   return (
     <PaperProvider theme={theme}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Profilul utilizatorului */}
         <View style={[styles.profileContainer, { backgroundColor: theme.colors.surface }]}>
-          <Avatar.Text size={60} label={user.username.charAt(0).toUpperCase()} />
+          <Avatar.Text size={60} label={user?.username.charAt(0).toUpperCase() || '?'} />
           <List.Item
-            title={user.username}
-            description={`Marca: ${user.marca}`}
+            title={user?.username || 'N/A'}
+            description={`Marca: ${user?.marca || 'N/A'}`}
             titleStyle={[styles.username, { color: theme.colors.onSurface }]}
             descriptionStyle={[styles.marca, { color: theme.colors.onSurfaceVariant }]}
             left={() => null}
