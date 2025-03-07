@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiService from '../services/AuthService';
-import { Alert } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 
 interface User {
   userid: number;
@@ -27,23 +27,35 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true); // Adăugăm loading aici!
 
   useEffect(() => {
     const checkToken = async () => {
       const savedToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
 
+      console.log("🔍 Token salvat:", savedToken);
+      console.log("🔍 Refresh token:", refreshToken);
+
       if (savedToken) {
         setUserToken(savedToken);
-        await fetchUserInfo(); // 🔥 Obținem user info dacă există token
+        console.log("🔓 Token existent, încerc să obțin user info...");
+        await fetchUserInfo();
       } else if (refreshToken) {
+        console.log("🔄 Încerc să reîmprospătez token-ul...");
         const newToken = await apiService.refreshAccessToken();
         if (newToken) {
           setUserToken(newToken);
           await fetchUserInfo();
         }
+      } else {
+        console.warn("⚠️ Nu există token valid, fac logout.");
+        await logout();
       }
+
+      setLoading(false); // 🔥 Acum terminăm loading-ul
     };
+
 
     checkToken();
   }, []);
@@ -61,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    console.log("🔴 Logout utilizator...");
     await AsyncStorage.removeItem('accessToken');
     await AsyncStorage.removeItem('refreshToken');
     setUserToken(null);
@@ -80,15 +93,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         groups: userInfo.groups || [],
         marca: userInfo.marca || '',
       });
-      console.log('User info actualizat:', userInfo);
     } catch (error) {
-      console.error('Eroare la obținerea informațiilor utilizatorului:', error);
+      console.error('❌ Eroare la obținerea informațiilor utilizatorului:', error);
     }
   };
 
   return (
     <AuthContext.Provider value={{ userToken, user, setUserToken, login, logout, fetchUserInfo }}>
-      {children}
+      {loading ? (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    ) : (
+      children
+    )}
     </AuthContext.Provider>
   );
 };

@@ -94,12 +94,18 @@ const apiService = {
     }
   },
 
-  request: async (endpoint: string, method = 'GET', body?: any, isUserId: boolean = false): Promise<any> => {
-
+  request: async (
+    endpoint: string,
+    method: string = 'GET',
+    body?: any,
+    isUserId: boolean = false,
+    isFormDataType: boolean = false
+  ): Promise<any> => {
     try {
       let token = await apiService.getAccessToken();
 
       if (!token) {
+        console.warn("⚠️ Token lipsă. Încerc refresh...");
         token = await apiService.refreshAccessToken();
         if (!token) throw new Error('Unauthorized');
       }
@@ -109,29 +115,54 @@ const apiService = {
         endpoint = endpoint + userId;
       }
 
-      console.log("Requesting:", `${API_URL}/${endpoint}`);
+      console.log("🔗 Requesting:", `${API_URL}/${endpoint}`);
+
+      // ⚠️ NU setăm manual Content-Type pentru FormData!
+      const headers: any = {
+        Authorization: `Bearer ${token}`,
+        ...(isFormDataType ? {} : { 'Content-Type': 'application/json' }) // Doar pentru JSON
+      };
 
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: body ? JSON.stringify(body) : null,
+        headers,
+        body: body ? (isFormDataType ? body : JSON.stringify(body)) : null,
       });
 
-      if (response.status === 401) {
-        const newToken = await apiService.refreshAccessToken();
-        if (newToken) {
-          return apiService.request(endpoint, method, body);
-        } else {
-          throw new Error('Session expired');
+      // ✅ Logăm răspunsul brut pentru debugging
+      const responseText = await response.text();
+      console.warn("⚠️ API Response Text:", responseText);
+
+      if (!response.ok) {
+        console.warn(`⚠️ API response status: ${response.status} - ${response.statusText}`);
+
+        if (response.status === 401) {
+          console.log("🔄 Token expirat, încerc refresh...");
+          const newToken = await apiService.refreshAccessToken();
+          if (newToken) {
+            return apiService.request(endpoint, method, body, isUserId, isFormDataType);
+          } else {
+            throw new Error('Session expired');
+          }
         }
+
+        return null; // Evităm parsarea JSON pentru răspunsuri de eroare
       }
 
-      return response.json();
+      // ✅ Încercăm să parsăm JSON doar dacă răspunsul nu e gol
+      try {
+        return JSON.parse(responseText);
+      } catch (error) {
+        console.error("🚨 JSON Parse error:", error);
+        return null;
+      }
+
     } catch (error) {
       console.error(`API request error: ${error}`);
       return null;
     }
   },
+
 };
 
 export default apiService;

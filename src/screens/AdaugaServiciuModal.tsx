@@ -11,6 +11,7 @@ import { Button, Checkbox, Divider, TextInput, List } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
 import { Service } from '../components/ServiceTable';
+import apiService from '../services/AuthService';
 
 
 interface AdaugaServiciuModalProps {
@@ -27,28 +28,29 @@ const initialFormData = {
     service_utilaj: '',
     file: null as string | null,
     revizie: {
-      ulei_motor: false,
-      filtru_ulei_motor: false,
-      filtru_combustibil: false,
-      filtru_aer: false,
-      filtru_polen: false,
-      filtru_adblue: false,
-      filtru_uscator: false,
+        ulei_motor: false,
+        filtru_ulei_motor: false,
+        filtru_combustibil: false,
+        filtru_aer: false,
+        filtru_polen: false,
+        filtru_adblue: false,
+        filtru_uscator: false,
     },
     revizie1: {
-      filtru_cutie: false,
-      filtru_ulei_cutie: false,
-      ulei_punte: false,
+        filtru_cutie: false,
+        filtru_ulei_cutie: false,
+        ulei_punte: false,
     },
     revizie2: {
-      ulei_hidraulic: false,
-      filtru_ulei_hidraulic: false,
+        ulei_hidraulic: false,
+        filtru_ulei_hidraulic: false,
     },
-  };
+};
 
 const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDismiss, rowData }) => {
 
     console.log("Row data: ", rowData);
+
 
     const theme = useTheme(); // ✅ Folosim tema din PaperProvider
 
@@ -58,6 +60,10 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
     const [datePickerVisible, setDatePickerVisible] = useState(false);
     const [services, setServices] = useState<ServiceUtilaj[]>([]);
+
+    const [indexInput, setIndexInput] = useState(formData.index);
+    const [lucrareDetaliiInput, setLucrareDetaliiInput] = useState(formData.lucrare_detalii);
+    const [serviceUtilajInput, setServiceUtilajInput] = useState(formData.service_utilaj);
     // const [selectedService] = useState<string>(formData.service);
 
     const { findAllServicesOnUtilajId } = useServiceUtilaj();
@@ -77,14 +83,22 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
     useEffect(() => {
         if (visible) {
-          setFormData(initialFormData); // ✅ Resetează formularul când modalul devine vizibil
+            const initialFormDat = {
+                ...initialFormData,
+                inventar: rowData?.inventar || '',
+            };
+            setFormData(initialFormDat); // ✅ Resetează formularul când modalul devine vizibil
         }
-      }, [visible]); // 🔥 Se execută doar când `visible` se schimbă
+    }, [visible]); // 🔥 Se execută doar când `visible` se schimbă
 
 
     // ✅ Funcție generală pentru actualizarea valorilor în formular
     const handleChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleBlur = (field: keyof typeof formData, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     // ✅ Funcție pentru actualizarea checkbox-urilor în secțiuni
@@ -105,36 +119,50 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
     };
 
     // ✅ Funcție de submit
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!formData.index) {
             Alert.alert('Eroare', 'Introduceți un index valid!');
             return;
         }
 
         if (!formData.service_utilaj && !formData.lucrare_detalii) {
-            Alert.alert('Eroare', 'Trebuie sa scrieti macar detalile lucrarilor efectuate sau sa selectati un service!');
+            Alert.alert('Eroare', 'Introduceți detalii despre lucrare sau selectați un service!');
             return;
         }
 
         const payload = new FormData();
-        Object.entries(formData).forEach(([key, value]) => {
-            if (key === 'file' && value) {
-                payload.append('file', {
-                    uri: value,
-                    name: 'document.pdf',
-                    type: 'application/pdf',
-                } as any);
-            } else if (typeof value === 'object' && value !== null) {
-                Object.entries(value).forEach(([subKey, subValue]) => {
-                    payload.append(subKey, subValue.toString());
-                });
-            } else {
-                if (value !== null) {
-                    payload.append(key, value.toString());
-                }
-            }
-        });
-        Alert.alert('Succes', 'Datele au fost trimise!');
+        payload.append('inventar', formData.inventar);
+        payload.append('data', formData.data.toISOString().split('T')[0]); // Trimite doar data, fără ora
+        payload.append('index', formData.index);
+        payload.append('lucrare_detalii', formData.lucrare_detalii);
+        if (formData.service_utilaj) {
+            payload.append('service_utilaj', formData.service_utilaj.toString());
+        }
+
+        // ✅ Mapăm corect toate checkbox-urile ca string "true"/"false"
+        [...Object.entries(formData.revizie), ...Object.entries(formData.revizie1), ...Object.entries(formData.revizie2)]
+            .forEach(([key, value]) => payload.append(key, value ? 'true' : 'false'));
+
+        // ✅ Atașăm fișierul PDF, dacă există
+        if (formData.file && formData.service_utilaj) {
+            payload.append('file', {
+                uri: formData.file,
+                name: 'document.pdf',
+                type: 'application/pdf',
+            } as any);
+        }
+
+        console.log("🔍 Payload trimis:", payload);
+
+        // ✅ Folosim API-ul corect observat în Network
+        const requestSend = await apiService.request('rest_fc_faz_lucrareandfcformdata/', 'POST', payload, false, true);
+
+        if (requestSend) {
+            Alert.alert('Succes', 'Datele au fost trimise cu succes!');
+            onDismiss();
+        } else {
+            Alert.alert('Eroare', 'A apărut o eroare la trimiterea datelor!');
+        }
     };
 
     // ✅ Verificăm dacă butonul trebuie să fie activ sau nu
@@ -159,8 +187,9 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <TextInput
                             label="Index*"
                             mode="outlined"
-                            value={formData.index}
-                            onChangeText={(text) => handleChange('index', text)}
+                            value={indexInput}
+                            onChangeText={(text) => setIndexInput(text)}
+                            onBlur={() => handleBlur('index', indexInput)}
                             placeholderTextColor={theme.colors.onSurface}
                             style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
                             theme={{ colors: { text: theme.colors.onSurface } }}
@@ -240,7 +269,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <Divider />
 
                         <View style={styles.pickerContainer}>
-                            <Text style={[styles.labelText, {color: theme.colors.onSurface }]}>Service</Text>
+                            <Text style={[styles.labelText, { color: theme.colors.onSurface }]}>Service</Text>
 
                             {services.length > 0 ? (
                                 <Picker
@@ -264,8 +293,12 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                             theme={{ colors: { text: theme.colors.onSurface } }}
                         />
 
-                        <Divider />
-                        <DocumentScannerComponent onPdfGenerated={handlePdfGenerated} />
+                        {formData.service_utilaj && (
+                            <>
+                                <Divider />
+                                <DocumentScannerComponent onPdfGenerated={handlePdfGenerated} />
+                            </>
+                        )}
                         <Divider />
 
                         {/* Buton de submit */}
@@ -300,7 +333,7 @@ const styles = StyleSheet.create({
     },
     container: {
         // flex: 1,
-       // backgroundColor: '#f8f8f8',
+        // backgroundColor: '#f8f8f8',
         padding: 10,
     },
     scrollContainer: {
@@ -325,8 +358,8 @@ const styles = StyleSheet.create({
         margin: 10,
         height: 100,
         textAlignVertical: 'top',
-       // backgroundColor: '#fff',
-       // color: '#000000',
+        // backgroundColor: '#fff',
+        // color: '#000000',
     },
     checkboxContainer: {
         flexDirection: 'row',
@@ -336,8 +369,8 @@ const styles = StyleSheet.create({
     buttonTrimite: {
         marginTop: 10,
         marginBottom: 10,
-       // backgroundColor: '#007bff',
-       // color: '#fff',
+        // backgroundColor: '#007bff',
+        // color: '#fff',
     },
     pickerContainer: {
         margin: 10,
