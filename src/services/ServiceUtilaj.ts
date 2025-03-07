@@ -1,8 +1,8 @@
 import { useAuth } from '../context/AuthContext';
 import apiService from './AuthService';
 
-// const API_URL = 'https://uti.umbgrup.ro';
 const API_URL = 'https://test.uti.umbgrup.ro';
+//const PROD_URL = `https://uti.umbgrup.ro`;
 
 export interface ServiceUtilaj {
   data: string;

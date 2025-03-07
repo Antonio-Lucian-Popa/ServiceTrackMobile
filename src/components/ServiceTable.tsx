@@ -34,12 +34,15 @@ const ServiceTable: React.FC<Props> = ({ onRowPress }) => {
           draw: '1',
           start: (page * itemsPerPage).toString(),
           length: itemsPerPage.toString(),
-          search: searchQuery,
+          'search[value]': searchQuery,
           'order[0][column]': sortColumn,
           'order[0][dir]': sortDirection,
         }).toString();
 
-        const response = await fetch(`https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`, {
+        const test = `https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+        //const prod = `https://uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+
+        const response = await fetch(test, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -75,7 +78,10 @@ const ServiceTable: React.FC<Props> = ({ onRowPress }) => {
       <TextInput
         placeholder="Caută..."
         value={searchQuery}
-        onChangeText={(text) => setSearchQuery(text)}
+        onChangeText={(text) => {
+          setSearchQuery(text);
+          setPage(0);
+        }}
         style={[
           styles.input,
           { backgroundColor: colors.surface, borderColor: colors.primary, color: colors.onSurface },
