@@ -3,8 +3,8 @@ import { View, Alert, StyleSheet, ScrollView, Image, PermissionsAndroid, Platfor
 import { Button, Icon, IconButton, useTheme } from 'react-native-paper';
 import DocumentScanner from 'react-native-document-scanner-plugin';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
-import FileViewer from 'react-native-file-viewer';
 import RNFS from 'react-native-fs';
+
 
 interface DocumentScannerScreenProps {
   onPdfGenerated: (pdfPath: string) => void; // ✅ Prop pentru trimiterea PDF-ului
@@ -12,6 +12,7 @@ interface DocumentScannerScreenProps {
 
 const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGenerated }) => {
   const [scannedImages, setScannedImages] = useState<string[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pdfPath, setPdfPath] = useState<string | null>(null);
 
   const theme = useTheme(); // ✅ Folosește tema PaperProvider
@@ -67,87 +68,74 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
   // 🔹 Generare PDF
   const generatePDF = async () => {
     if (scannedImages.length === 0) {
-      Alert.alert('Eroare', 'Nu există imagini scanate!');
-      return;
+        Alert.alert('Eroare', 'Nu există imagini scanate!');
+        return;
     }
 
-    let htmlContent = `
-      <html>
-        <head>
-          <style>
-            * { margin: 0; padding: 0; }
-            body { width: 100%; height: 100%; }
-            .page { display: flex; align-items: center; justify-content: center; height: 100vh; }
-            img { width: 100vw; height: 100vh; object-fit: cover; } 
-          </style>
-        </head>
-        <body>
-    `;
-
-    scannedImages.forEach((imageUri, index) => {
-      htmlContent += `
-        <div class="page" ${index < scannedImages.length - 1 ? 'style="page-break-after: always;"' : ''}>
-          <img src="${imageUri}" />
-        </div>
-      `;
-    });
-
-    htmlContent += `
-        </body>
-      </html>
-    `;
-
     try {
-      const options = {
-        html: htmlContent,
-        fileName: 'scanned_document',
-        directory: 'Documents',
-        base64: false,
-      };
+        // ✅ Convertim imaginile în base64
+        const base64Images = await convertImagesToBase64(scannedImages);
 
-      const pdf = await RNHTMLtoPDF.convert(options);
-      if (pdf.filePath) {
-        setPdfPath(pdf.filePath);
-        Alert.alert('Succes', `PDF generat: ${pdf.filePath}`);
-        onPdfGenerated(pdf.filePath); // ✅ Trimiterea PDF-ului către componenta părinte
-      } else {
+        let htmlContent = `
+            <html>
+                <head>
+                    <style>
+                        * { margin: 0; padding: 0; }
+                        body { width: 100%; height: 100%; }
+                        .page { display: flex; align-items: center; justify-content: center; height: 100vh; }
+                        img { width: 100vw; height: 100vh; object-fit: contain; } 
+                    </style>
+                </head>
+                <body>
+        `;
+
+        base64Images.forEach((imageBase64: any, index: number) => {
+            htmlContent += `
+                <div class="page" ${index < base64Images.length - 1 ? 'style="page-break-after: always;"' : ''}>
+                    <img src="${imageBase64}" />
+                </div>
+            `;
+        });
+
+        htmlContent += `</body></html>`;
+
+        const options = {
+            html: htmlContent,
+            fileName: 'scanned_document',
+            base64: true, // ✅ Generăm PDF direct ca base64
+        };
+
+        const pdf = await RNHTMLtoPDF.convert(options);
+
+        if (pdf.base64) {
+            console.log("📂 PDF generat în Base64");
+            onPdfGenerated(pdf.base64); // ✅ Trimitem base64 la formular
+        } else {
+            Alert.alert('Eroare', 'Nu s-a putut genera PDF-ul.');
+        }
+    } catch (error) {
+        console.error('Eroare la generarea PDF-ului:', error);
         Alert.alert('Eroare', 'Nu s-a putut genera PDF-ul.');
-      }
-    } catch (error) {
-      console.error('Eroare la generarea PDF-ului:', error);
-      Alert.alert('Eroare', 'Nu s-a putut genera PDF-ul.');
     }
-  };
+};
 
 
-  // 🔹 Verificarea existenței PDF-ului
-  const checkPDFExists = async (path: string) => {
-    const exists = await RNFS.exists(path);
-    if (!exists) {
-      Alert.alert('Eroare', 'Fișierul PDF nu există!');
-      return false;
-    }
-    return true;
-  };
+// Funcție pentru conversia imaginilor scanate în base64
+const convertImagesToBase64 = async (imageUris: string[]) => {
+  try {
+      const base64Images = await Promise.all(
+          imageUris.map(async (uri) => {
+              const base64 = await RNFS.readFile(uri, 'base64');
+              return `data:image/jpeg;base64,${base64}`;
+          })
+      );
+      return base64Images;
+  } catch (error) {
+      console.error('Eroare la conversia imaginilor:', error);
+      return [];
+  }
+};
 
-  // 🔹 Funcție pentru deschiderea PDF-ului
-  const openPDF = async () => {
-    if (!pdfPath) {
-      Alert.alert('Eroare', 'Nu există PDF generat.');
-      return;
-    }
-
-    const exists = await checkPDFExists(pdfPath);
-    if (!exists) return;
-
-    try {
-      const filePath = Platform.OS === 'android' ? `file://${pdfPath}` : pdfPath;
-      await FileViewer.open(filePath, { showOpenWithDialog: true });
-    } catch (error) {
-      console.error('Eroare deschidere PDF:', error);
-      Alert.alert('Eroare', 'Nu s-a putut deschide PDF-ul. Verifică dacă ai un vizualizator PDF instalat.');
-    }
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -191,13 +179,6 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
           </View>
         ))}
       </ScrollView>
-
-      {/* 🔹 Buton pentru deschiderea PDF-ului */}
-      {pdfPath && (
-        <Button mode="contained" onPress={openPDF} style={[styles.openPdfButton, { backgroundColor: theme.colors.primary }]}>
-          Deschide PDF
-        </Button>
-      )}
     </View>
   );
 };

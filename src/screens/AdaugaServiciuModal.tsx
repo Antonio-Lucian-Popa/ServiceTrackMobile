@@ -13,6 +13,9 @@ import { Picker } from '@react-native-picker/picker';
 import { Service } from '../components/ServiceTable';
 import apiService from '../services/AuthService';
 
+import { debounce } from 'lodash';
+
+
 
 interface AdaugaServiciuModalProps {
     visible: boolean;
@@ -60,18 +63,16 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
     const [datePickerVisible, setDatePickerVisible] = useState(false);
     const [services, setServices] = useState<ServiceUtilaj[]>([]);
-
-    const [indexInput, setIndexInput] = useState(formData.index);
-    const [lucrareDetaliiInput, setLucrareDetaliiInput] = useState(formData.lucrare_detalii);
-    const [serviceUtilajInput, setServiceUtilajInput] = useState(formData.service_utilaj);
     // const [selectedService] = useState<string>(formData.service);
 
     const { findAllServicesOnUtilajId } = useServiceUtilaj();
 
     useEffect(() => {
         if (rowData) {
+            setServices([]); // ✅ Resetează lista de servicii când se schimbă utilajul
             const fetchServices = async () => {
                 const servicesList = await findAllServicesOnUtilajId(rowData?.id);
+                console.log("🔍 Services list:", servicesList);
                 if (servicesList && servicesList.length > 0) {
                     setServices(servicesList);
                 }
@@ -79,7 +80,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
             fetchServices();
         }
-    }, []);
+    }, [rowData]);
 
     useEffect(() => {
         if (visible) {
@@ -97,9 +98,10 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleBlur = (field: keyof typeof formData, value: any) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
+    // Funcția debounce pentru întârzierea actualizării stării
+    const handleDebouncedChange = debounce((field, value) => {
+        handleChange(field, value); // Actualizăm formData doar după o pauză
+    }, 300);
 
     // ✅ Funcție pentru actualizarea checkbox-urilor în secțiuni
     const handleCheckboxChange = (section: keyof typeof formData, field: string) => {
@@ -145,11 +147,13 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
         // ✅ Atașăm fișierul PDF, dacă există
         if (formData.file && formData.service_utilaj) {
-            payload.append('file', {
-                uri: formData.file,
+            const pdfFile = {
+                uri: `data:application/pdf;base64,${formData.file}`, // 🔥 Base64 formatat corect
                 name: 'document.pdf',
                 type: 'application/pdf',
-            } as any);
+            };
+
+            payload.append('file', pdfFile);
         }
 
         console.log("🔍 Payload trimis:", payload);
@@ -187,9 +191,8 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <TextInput
                             label="Index*"
                             mode="outlined"
-                            value={indexInput}
-                            onChangeText={(text) => setIndexInput(text)}
-                            onBlur={() => handleBlur('index', indexInput)}
+                            defaultValue={formData.index} // ✅ Nu forțează re-render-ul
+                            onChangeText={(text) => handleDebouncedChange('index', text)}
                             placeholderTextColor={theme.colors.onSurface}
                             style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
                             theme={{ colors: { text: theme.colors.onSurface } }}
@@ -273,10 +276,11 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
                             {services.length > 0 ? (
                                 <Picker
-                                    selectedValue={formData.service_utilaj} onValueChange={(itemValue) => handleChange('service_utilaj', itemValue)}
+                                    selectedValue={formData.service_utilaj || null} onValueChange={(itemValue) => handleChange('service_utilaj', itemValue)}
                                 >
+                                    <Picker.Item label="Selectează un service" value={null} />
                                     {services.map((service, index) => (
-                                        <Picker.Item key={index} label={service.titlu} value={service} />
+                                        <Picker.Item key={index} label={service.titlu} value={service.id} />
                                     ))}
                                 </Picker>
                             ) : (
@@ -288,7 +292,9 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
                         <TextInput
                             label="Detalii lucrări efectuate"
                             mode="outlined"
-                            value={formData.lucrare_detalii} onChangeText={(text) => handleChange('lucrare_detalii', text)} multiline numberOfLines={4}
+                            defaultValue={formData.lucrare_detalii}
+                            onChangeText={(text) => handleDebouncedChange('lucrare_detalii', text)}
+                            multiline numberOfLines={4}
                             style={[styles.textArea, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface }]}
                             theme={{ colors: { text: theme.colors.onSurface } }}
                         />
