@@ -49,7 +49,6 @@ const SettingsScreen: React.FC = () => {
           <Avatar.Text size={60} label={user?.username.charAt(0).toUpperCase() || '?'} />
           <List.Item
             title={user?.username || 'N/A'}
-            description={`Marca: ${user?.marca || 'N/A'}`}
             titleStyle={[styles.username, { color: theme.colors.onSurface }]}
             descriptionStyle={[styles.marca, { color: theme.colors.onSurfaceVariant }]}
             left={() => null}
