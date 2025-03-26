@@ -34,19 +34,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const savedToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
 
-      console.log("🔍 Token salvat:", savedToken);
+      console.error("🔍 Token salvat:", savedToken);
       console.log("🔍 Refresh token:", refreshToken);
-
+ 
       if (savedToken) {
         setUserToken(savedToken);
+        console.log('🔓 Token existent:', userToken);
         console.log("🔓 Token existent, încerc să obțin user info...");
-        await fetchUserInfo();
+        await fetchUserInfo(savedToken);
       } else if (refreshToken) {
         console.log("🔄 Încerc să reîmprospătez token-ul...");
         const newToken = await apiService.refreshAccessToken();
         if (newToken) {
           setUserToken(newToken);
-          await fetchUserInfo();
+          await fetchUserInfo(newToken);
         }
       } else {
         console.warn("⚠️ Nu există token valid, fac logout.");
@@ -58,15 +59,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
     checkToken();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (username: string, password: string) => {
     const response = await apiService.login(username, password);
     if (response) {
       setUserToken(response.access);
-      await AsyncStorage.setItem('accessToken', response.access);
-      await AsyncStorage.setItem('refreshToken', response.refresh);
-      await fetchUserInfo();
+      try {
+        await AsyncStorage.setItem('accessToken', response.access);
+        await AsyncStorage.setItem('refreshToken', response.refresh);
+        await fetchUserInfo();
+      } catch (e) {
+        console.error("❌ AsyncStorage Error:", e);
+        if (e instanceof Error) {
+          Alert.alert('Eroare: ', e.message);
+        } else {
+          Alert.alert('Eroare necunoscută');
+        }
+      }
     } else {
       Alert.alert('Autentificare eșuată');
     }
@@ -80,10 +91,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
-  const fetchUserInfo = async () => {
+  const fetchUserInfo = async (token?: string) => {
     try {
-      const userInfo = await apiService.request('oidc_userinfo/', 'GET', null, true);
-      console.log('User info:', userInfo);
+      const userInfo = await apiService.request('oidc_userinfo/', 'GET', null, true, false, token);
+      console.error('User info:', userInfo);
       setUser({
         userid: userInfo.userid || 0,
         username: userInfo.username || '',

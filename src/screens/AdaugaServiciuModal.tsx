@@ -12,6 +12,7 @@ import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
 import { Service } from '../components/ServiceTable';
 import apiService from '../services/AuthService';
+import RNFS from 'react-native-fs';
 
 import { debounce } from 'lodash';
 
@@ -29,7 +30,11 @@ const initialFormData = {
     index: '',
     lucrare_detalii: '',
     service_utilaj: '',
-    file: null as string | null,
+    file: {
+        uri: '',
+        name: '',
+        type: '',
+    },
     revizie: {
         ulei_motor: false,
         filtru_ulei_motor: false,
@@ -57,7 +62,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
     const theme = useTheme(); // ✅ Folosim tema din PaperProvider
 
-    const utilajId = rowData?.id;
+    const utilajId = rowData?.inventar || '';
 
     const [formData, setFormData] = useState(initialFormData);
 
@@ -147,13 +152,7 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
         // ✅ Atașăm fișierul PDF, dacă există
         if (formData.file && formData.service_utilaj) {
-            const pdfFile = {
-                uri: `data:application/pdf;base64,${formData.file}`, // 🔥 Base64 formatat corect
-                name: 'document.pdf',
-                type: 'application/pdf',
-            };
-
-            payload.append('file', pdfFile);
+            payload.append('file', formData.file);
         }
 
         console.log("🔍 Payload trimis:", payload);
@@ -161,8 +160,15 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
         // ✅ Folosim API-ul corect observat în Network
         const requestSend = await apiService.request('rest_fc_faz_lucrareandfcformdata/', 'POST', payload, false, true);
 
-        if (requestSend) {
+        if (requestSend && !requestSend.error) {
             Alert.alert('Succes', 'Datele au fost trimise cu succes!');
+            if(formData.file && formData.file.uri) {
+                try {
+                    await RNFS.unlink(formData.file.uri.replace("file://", ""));
+                } catch (error) {
+                    console.error("🚨 Eroare la ștergerea fișierului:", error);
+                }
+            }
             onDismiss();
         } else {
             Alert.alert('Eroare', 'A apărut o eroare la trimiterea datelor!');

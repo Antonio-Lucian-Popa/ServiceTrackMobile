@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
+import { Alert } from 'react-native';
 
 const API_URL = 'https://test.uti.umbgrup.ro';
-//const PROD_URL = `https://uti.umbgrup.ro`;
+//const API_URL = `https://uti.umbgrup.ro`;
 
 interface AuthResponse {
   access: string;
@@ -100,10 +101,12 @@ const apiService = {
     method: string = 'GET',
     body?: any,
     isUserId: boolean = false,
-    isFormDataType: boolean = false
+    isFormDataType: boolean = false,
+    ovverideToken?: string
   ): Promise<any> => {
     try {
-      let token = await apiService.getAccessToken();
+     // let token = await apiService.getAccessToken();
+     let token = ovverideToken ? ovverideToken : await apiService.getAccessToken();
 
       if (!token) {
         console.warn("⚠️ Token lipsă. Încerc refresh...");
@@ -116,13 +119,16 @@ const apiService = {
         endpoint = endpoint + userId;
       }
 
-      console.log("🔗 Requesting:", `${API_URL}/${endpoint}`);
+      // console.error("🔗 Requesting:", `${API_URL}/${endpoint}`);
 
       // ⚠️ NU setăm manual Content-Type pentru FormData!
       const headers: any = {
         Authorization: `Bearer ${token}`,
+        'X-Authorization': `Bearer ${token}`,
         ...(isFormDataType ? {} : { 'Content-Type': 'application/json' }) // Doar pentru JSON
       };
+
+      console.error("🚀 Request Headers:", headers);
 
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method,
@@ -132,10 +138,10 @@ const apiService = {
 
       // ✅ Logăm răspunsul brut pentru debugging
       const responseText = await response.text();
-      console.warn("⚠️ API Response Text:", responseText);
+      console.error("⚠️ API Response Text:", responseText);
 
       if (!response.ok) {
-        console.warn(`⚠️ API response status: ${response.status} - ${response.statusText}`);
+        console.error(`⚠️ API response status: ${response.status} - ${response.statusText}`);
 
         if (response.status === 401) {
           console.log("🔄 Token expirat, încerc refresh...");
@@ -160,6 +166,11 @@ const apiService = {
 
     } catch (error) {
       console.error(`API request error: ${error}`);
+      if (error instanceof Error) {
+        Alert.alert('Eroare: ', error.message);
+      } else {
+        Alert.alert('Eroare: ', 'An unknown error occurred');
+      }
       return null;
     }
   },

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, ActivityIndicator, TextInput, StyleSheet } from 'react-native';
-import { DataTable, useTheme } from 'react-native-paper';
+import { DataTable, IconButton, useTheme } from 'react-native-paper';
 
 export interface Service {
   id: number;
@@ -24,70 +24,78 @@ const ServiceTable: React.FC<Props> = ({ onRowPress }) => {
   const [sortColumn, setSortColumn] = useState('0');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
+   // 🔹 Funcție pentru a obține datele
+   const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
 
-        const queryParams = new URLSearchParams({
-          draw: '1',
-          start: (page * itemsPerPage).toString(),
-          length: itemsPerPage.toString(),
-          'search[value]': searchQuery,
-          'order[0][column]': sortColumn,
-          'order[0][dir]': sortDirection,
-        }).toString();
+      const queryParams = new URLSearchParams({
+        draw: '1',
+        start: (page * itemsPerPage).toString(),
+        length: itemsPerPage.toString(),
+        'search[value]': searchQuery,
+        'order[0][column]': sortColumn,
+        'order[0][dir]': sortDirection,
+      }).toString();
 
-        const test = `https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
-        //const prod = `https://uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+      const url = `https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+     //const url = `https://uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const response = await fetch(test, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const result = await response.json();
-        console.log('Result: ', result);
-
-        if (result.data && Array.isArray(result.data)) {
-          setData(result.data);
-          setTotalItems(result.recordsTotal || result.data.length);
-        } else {
-          console.error('Unexpected response format:', result);
-          setData([]);
-          setTotalItems(0);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
+      const result = await response.json();
+      if (result.data && Array.isArray(result.data)) {
+        setData(result.data);
+        setTotalItems(result.recordsTotal || result.data.length);
+      } else {
         setData([]);
         setTotalItems(0);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchData();
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setData([]);
+      setTotalItems(0);
+    } finally {
+      setLoading(false);
+    }
   }, [page, itemsPerPage, searchQuery, sortColumn, sortDirection]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // 🔄 Funcție pentru refresh manual
+  const handleRefresh = () => {
+    setPage(0); // Resetăm la prima pagină
+    fetchData(); // Reîncărcăm datele
+  };
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TextInput
-        placeholder="Caută..."
-        value={searchQuery}
-        onChangeText={(text) => {
-          setSearchQuery(text);
-          setPage(0);
-        }}
-        style={[
-          styles.input,
-          { backgroundColor: colors.surface, borderColor: colors.primary, color: colors.onSurface },
-        ]}
-        placeholderTextColor={colors.onSurface}
-      />
+      <View style={styles.topBar}>
+        <TextInput
+          placeholder="Caută..."
+          value={searchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            setPage(0); // Resetăm pagina când căutăm
+          }}
+          style={[
+            styles.input,
+            { backgroundColor: colors.surface, borderColor: colors.primary, color: colors.onSurface },
+          ]}
+          placeholderTextColor={colors.onSurface}
+        />
+        {/* 🔄 Buton de Refresh */}
+        <IconButton icon="refresh" size={24} onPress={handleRefresh} />
+      </View>
       {loading ? (
         <ActivityIndicator animating size="large" />
       ) : (
@@ -139,11 +147,17 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 10,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   input: {
     marginBottom: 10,
     padding: 10,
     borderWidth: 1,
     borderRadius: 5,
+    width: '80%',
   },
   table: {
     borderRadius: 10,
