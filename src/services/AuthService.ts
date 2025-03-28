@@ -128,8 +128,6 @@ const apiService = {
         ...(isFormDataType ? {} : { 'Content-Type': 'application/json' }) // Doar pentru JSON
       };
 
-      console.error("🚀 Request Headers:", headers);
-
       const response = await fetch(`${API_URL}/${endpoint}`, {
         method,
         headers,
@@ -138,7 +136,6 @@ const apiService = {
 
       // ✅ Logăm răspunsul brut pentru debugging
       const responseText = await response.text();
-      console.error("⚠️ API Response Text:", responseText);
 
       if (!response.ok) {
         console.error(`⚠️ API response status: ${response.status} - ${response.statusText}`);

@@ -84,18 +84,33 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
     try {
       const base64Images = await convertImagesToBase64(imageUris);
 
+      // let htmlContent = `
+      //   <html>
+      //     <head>
+      //       <style>
+      //         * { margin: 0; padding: 0; }
+      //         body { width: 100%; height: 100%; }
+      //         .page { display: flex; align-items: center; justify-content: center; height: 100vh; }
+      //         img { width: 100vw; height: 100vh; object-fit: contain; } 
+      //       </style>
+      //     </head>
+      //     <body>
+      // `;
+
       let htmlContent = `
         <html>
-          <head>
+        <head>
+          <meta charset="utf-8"/>
+        <head>
             <style>
-              * { margin: 0; padding: 0; }
-              body { width: 100%; height: 100%; }
-              .page { display: flex; align-items: center; justify-content: center; height: 100vh; }
-              img { width: 100vw; height: 100vh; object-fit: contain; } 
+              body { margin: 0; padding: 0; }
+              .page { display: flex; align-items: center; justify-content: center; height: 100%; }
+              img { width: 100%; height: 100%; object-fit: contain; } 
             </style>
           </head>
           <body>
       `;
+
 
       base64Images.forEach((imageBase64, index) => {
         htmlContent += `

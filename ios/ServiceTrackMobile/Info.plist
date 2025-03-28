@@ -65,7 +65,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>NSCameraUsageDescription</key>
-	<string>Aplicatia necesita acces la camera pentru scanarea documentelor</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>App needs access to photos for saving documents</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>App needs access to Documents folder to generate PDF</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 </dict>
 </plist>

@@ -33,17 +33,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkToken = async () => {
       const savedToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
-
-      console.error("🔍 Token salvat:", savedToken);
       console.log("🔍 Refresh token:", refreshToken);
  
-      if (savedToken) {
+      // if (savedToken) {
+      //   setUserToken(savedToken);
+      //   console.log('🔓 Token existent:', userToken);
+      //   console.log("🔓 Token existent, încerc să obțin user info...");
+      //   await fetchUserInfo(savedToken);
+      // } else if (refreshToken) {
+      //   console.log("🔄 Încerc să reîmprospătez token-ul...");
+      //   const newToken = await apiService.refreshAccessToken();
+      //   if (newToken) {
+      //     setUserToken(newToken);
+      //     await fetchUserInfo(newToken);
+      //   }
+      // }
+      if (savedToken && !apiService.isTokenExpired(savedToken)) {
+        console.log("🔓 Token existent și valid");
         setUserToken(savedToken);
-        console.log('🔓 Token existent:', userToken);
-        console.log("🔓 Token existent, încerc să obțin user info...");
         await fetchUserInfo(savedToken);
       } else if (refreshToken) {
-        console.log("🔄 Încerc să reîmprospătez token-ul...");
+        console.log("🔄 Token expirat sau lipsă, încerc să îl reîmprospătez...");
         const newToken = await apiService.refreshAccessToken();
         if (newToken) {
           setUserToken(newToken);

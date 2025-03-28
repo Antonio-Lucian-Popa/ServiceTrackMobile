@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { MD3DarkTheme, MD3LightTheme, Modal, Portal, useTheme } from 'react-native-paper';
 import { ServiceUtilaj, useServiceUtilaj } from '../services/ServiceUtilaj';
 
-import { StyleSheet, Alert, View, TouchableOpacity, ScrollView, SafeAreaView, useColorScheme } from 'react-native';
+import { StyleSheet, Alert, View, TouchableOpacity, ScrollView, SafeAreaView, useColorScheme, Platform } from 'react-native';
 import DocumentScannerComponent from '../components/DocumentScanner';
 import { Text } from 'react-native';
 import { Button, Checkbox, Divider, TextInput, List } from 'react-native-paper';
@@ -152,10 +152,13 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
 
         // ✅ Atașăm fișierul PDF, dacă există
         if (formData.file && formData.service_utilaj) {
-            payload.append('file', formData.file);
+           // payload.append('file', formData.file);
+           payload.append('file', {
+            uri: Platform.OS === 'ios' ? formData.file.uri.replace('file://', '') : formData.file.uri,
+            name: formData.file.name,
+            type: formData.file.type,
+          });
         }
-
-        console.log("🔍 Payload trimis:", payload);
 
         // ✅ Folosim API-ul corect observat în Network
         const requestSend = await apiService.request('rest_fc_faz_lucrareandfcformdata/', 'POST', payload, false, true);
@@ -181,11 +184,6 @@ const AdaugaServiciuModal: React.FC<AdaugaServiciuModalProps> = ({ visible, onDi
     return (
         <Portal>
             <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
-                {/* <View>
-                    <Text style={styles.modalText}>Index: {rowData?.index}</Text>
-                    <Text style={styles.modalText}>Service: {rowData?.service}</Text>
-                </View> */}
-
                 <SafeAreaView style={styles.container}>
                     <ScrollView contentContainerStyle={styles.scrollContainer}>
                         <Button onPress={onDismiss} textColor={theme.colors.onSurface} style={styles.closeButton}>X</Button>
