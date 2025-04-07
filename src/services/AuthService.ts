@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
 import { Alert } from 'react-native';
 
-const API_URL = 'https://test.uti.umbgrup.ro';
-//const API_URL = `https://uti.umbgrup.ro`;
+//const API_URL = 'https://test.uti.umbgrup.ro';
+const API_URL = `https://uti.umbgrup.ro`;
 
 interface AuthResponse {
   access: string;

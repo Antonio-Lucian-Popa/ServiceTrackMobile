@@ -39,8 +39,8 @@ const ServiceTable: React.FC<Props> = ({ onRowPress }) => {
         'order[0][dir]': sortDirection,
       }).toString();
 
-      const url = `https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
-     //const url = `https://uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+     // const url = `https://test.uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
+     const url = `https://uti.umbgrup.ro/utilajetot_list/?${queryParams}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {

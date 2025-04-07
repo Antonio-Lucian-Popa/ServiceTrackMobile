@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, StyleSheet, ScrollView, Image, PermissionsAndroid, Platform } from 'react-native';
+import { View, Alert, StyleSheet, ScrollView, Image, PermissionsAndroid, Platform, Linking } from 'react-native';
 import { Button, IconButton, useTheme } from 'react-native-paper';
 import DocumentScanner from 'react-native-document-scanner-plugin';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
@@ -9,6 +9,9 @@ import RNFS from 'react-native-fs';
 interface DocumentScannerScreenProps {
   onPdfGenerated: (pdfPath: any) => void; // ✅ Prop pentru trimiterea PDF-ului
 }
+
+type Permission = (typeof PermissionsAndroid.PERMISSIONS)[keyof typeof PermissionsAndroid.PERMISSIONS];
+
 
 const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGenerated }) => {
   const [scannedImages, setScannedImages] = useState<string[]>([]);
@@ -25,21 +28,54 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
   }, []);
 
   // 🔹 Cerere permisiuni Android
-  const requestStoragePermission = async () => {
+  const requestStoragePermission = async (): Promise<boolean> => {
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        {
-          title: 'Acces la fișiere',
-          message: 'Aplicația are nevoie de permisiune pentru a deschide fișiere PDF.',
-          buttonNeutral: 'Mai târziu',
-          buttonNegative: 'Refuz',
-          buttonPositive: 'Permite',
+      const permissions: Permission[] = [];
+
+      permissions.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+
+      if (Number(Platform.Version) >= 33) {
+        permissions.push(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+      } else {
+        permissions.push(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+      }
+
+      const granted = await PermissionsAndroid.requestMultiple(permissions);
+
+      // 🔍 Verifică dacă vreo permisiune a fost refuzată permanent
+      for (const perm of permissions) {
+        const result = granted[perm];
+
+        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          Alert.alert(
+            'Permisiune blocată',
+            'Ai refuzat permanent accesul la cameră sau fișiere. Te rugăm să activezi manual permisiunile din setările telefonului.',
+            [
+              { text: 'Anulează', style: 'cancel' },
+              {
+                text: 'Deschide setări',
+                onPress: () => Linking.openSettings(),
+              },
+            ]
+          );
+          return false;
         }
+      }
+
+      const allGranted = permissions.every(
+        (perm) => granted[perm] === PermissionsAndroid.RESULTS.GRANTED
       );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
+
+      if (!allGranted) {
+        Alert.alert(
+          'Permisiuni necesare',
+          'Aplicația are nevoie de permisiuni pentru a accesa camera și fișierele.'
+        );
+      }
+
+      return allGranted;
     } catch (err) {
-      console.warn('Eroare permisiuni:', err);
+      console.warn('Eroare la cererea permisiunilor:', err);
       return false;
     }
   };
@@ -70,15 +106,15 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
     setScannedImages(updatedImages);
 
     if (updatedImages.length > 0) {
-        await generatePDF(updatedImages); // ✅ Generăm PDF din imaginile rămase
+      await generatePDF(updatedImages); // ✅ Generăm PDF din imaginile rămase
     } else {
-        onPdfGenerated(null); // ❌ Dacă nu mai sunt imagini, trimitem `null` către părinte
-        setPdfPath(null);
+      onPdfGenerated(null); // ❌ Dacă nu mai sunt imagini, trimitem `null` către părinte
+      setPdfPath(null);
     }
   };
 
-   // 🔹 Generare PDF automat după scanare
-   const generatePDF = async (imageUris: string[]) => {
+  // 🔹 Generare PDF automat după scanare
+  const generatePDF = async (imageUris: string[]) => {
     if (imageUris.length === 0) return;
 
     try {
@@ -112,7 +148,7 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
         fileName: 'scanned_document',
         directory: 'Documents', // ✅ Salvăm PDF-ul în stocare
         base64: false, // ❌ Nu generăm Base64
-    };
+      };
 
       const pdf = await RNHTMLtoPDF.convert(options);
 
@@ -122,9 +158,9 @@ const DocumentScannerScreen: React.FC<DocumentScannerScreenProps> = ({ onPdfGene
           uri: `file://${pdf.filePath}`,
           name: 'document.pdf',
           type: 'application/pdf',
-      };
+        };
 
-      onPdfGenerated(pdfFile);
+        onPdfGenerated(pdfFile);
         console.log('Succes', 'PDF generat cu succes!');
       } else {
         Alert.alert('Eroare', 'Nu s-a putut genera PDF-ul.');
